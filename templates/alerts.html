@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI Alert Dashboard</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f7fb;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #555;
+      margin-bottom: 20px;
+    }
+
+    .info-bar {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .info-bar span.label {
+      font-weight: 600;
+    }
+
+    .badge {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: #e5f3ff;
+      color: #165bb7;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    th, td {
+      border-bottom: 1px solid #eee;
+      padding: 8px 10px;
+      font-size: 14px;
+      text-align: left;
+    }
+
+    th {
+      background: #f2f4f8;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .critical {
+      background-color: #ffe5e5;
+    }
+
+    .noise {
+      background-color: #f6f6f6;
+    }
+
+    .example {
+      background-color: #fffbe6;
+      font-style: italic;
+    }
+
+    .empty-message {
+      padding: 14px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>AI-Based Alert Filtering Dashboard</h1>
+    <div class="subtitle">
+      Prototype interface for my final year project. This dashboard will show system alerts,
+      highlight critical ones, and hide routine noise.
+    </div>
+
+    <div class="info-bar">
+      <div>
+        <span class="label">Status:</span> Prototype UI (backend not fully finished yet)
+      </div>
+      <div class="badge">
+        Sample view – layout only
+      </div>
+    </div>
+
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>Metric</th>
+        <th>Value</th>
+        <th>Message</th>
+        <th>Label</th>
+        <th>Time (UTC)</th>
+      </tr>
+
+      {% if alerts and alerts|length > 0 %}
+        {# gerçek veriler varsa onları göster #}
+        {% for a in alerts %}
+        <tr class="{{ 'critical' if a['label']=='Critical' else 'noise' }}">
+          <td>{{ a['id'] }}</td>
+          <td>{{ a['metric'] }}</td>
+          <td>{{ a['value'] }}</td>
+          <td>{{ a['message'] }}</td>
+          <td>{{ a['label'] }}</td>
+          <td>{{ a['timestamp'] }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        {# henüz gerçek alert yoksa örnek (fake) bir satır göster #}
+        <tr class="example">
+          <td>1</td>
+          <td>CPU</td>
+          <td>92%</td>
+          <td>High CPU usage detected on node gpu-worker-01.</td>
+          <td>Critical</td>
+          <td>2025-12-01T09:30:00Z</td>
+        </tr>
+      {% endif %}
+    </table>
+
+    {% if not alerts or alerts|length == 0 %}
+    <div class="empty-message">
+      This is a sample alert row to show how the table will look when real data arrives.
+      Later, this will be replaced by live alerts from the backend.
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>
