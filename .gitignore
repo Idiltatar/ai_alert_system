@@ -1,0 +1,27 @@
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Virtual environment
+venv/
+.env
+
+# Database files
+*.db
+
+# Machine learning model files
+*.pkl
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Kaggle credentials
+kaggle.json
+.kaggle/
+
+# Logs
+*.log
