@@ -1,0 +1,38 @@
+from app import app, init_db
+
+
+def setup_module(module):
+    init_db()
+
+
+def test_post_valid_alert():
+    client = app.test_client()
+
+    response = client.post("/alerts", json={
+        "metric": "CPU",
+        "value": 95,
+        "message": "test high cpu"
+    })
+
+    assert response.status_code == 201
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert "id" in data
+    assert "label" in data
+    assert "label_source" in data
+
+
+def test_post_invalid_alert():
+    client = app.test_client()
+
+    response = client.post("/alerts", json={
+        "metric": "",
+        "value": None
+    })
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+    assert data["status"] == "error"
+    assert "message" in data
