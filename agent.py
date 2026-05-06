@@ -14,4 +14,4 @@ while True:
             requests.post(BACKEND_URL, json=alert, timeout=3)
         except Exception as e:
             print("Failed to send alert:", e)
-    time.sleep(5)  
+    time.sleep(5)  # check every 5 seconds
