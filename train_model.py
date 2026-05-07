@@ -17,7 +17,7 @@ import joblib
 DB_PATH = "alerts.db"
 MODEL_PATH = "model.pkl"
 
-
+# Load labelled alerts from SQLite
 def load_data():
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("""
@@ -29,6 +29,7 @@ def load_data():
     return df
 
 
+# Simple baseline rule for comparison
 def baseline_predict(records, threshold=80.0):
    
    
@@ -40,7 +41,7 @@ def baseline_predict(records, threshold=80.0):
         preds.append(1 if float(v) >= threshold else 0)
     return preds
 
-
+# Print model evaluation results
 def print_results(title, y_true, y_pred):
     acc = accuracy_score(y_true, y_pred)
     precision = precision_score(y_true, y_pred, zero_division=0)
@@ -67,7 +68,7 @@ def print_results(title, y_true, y_pred):
         zero_division=0
     ))
 
-
+# Compare ML model with baseline rule
 def compare_results(y_test, y_pred_ml, y_pred_base):
     ml_acc = accuracy_score(y_test, y_pred_ml)
     base_acc = accuracy_score(y_test, y_pred_base)
@@ -104,7 +105,7 @@ def main():
     print("\nLabel distribution:")
     print(label_counts)
 
-   
+ # Select features used for training
     X = df[[
         "metric",
         "value",
@@ -115,10 +116,10 @@ def main():
         "value_bucket"
     ]].to_dict(orient="records")
 
-   
+    # Convert labels into numbers
     y = (df["label"] == "Critical").astype(int)
 
-    
+     # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -147,7 +148,7 @@ def main():
     
     compare_results(y_test, y_pred_ml, y_pred_base)
 
-    
+ # Save trained model for Flask app
     joblib.dump(model, MODEL_PATH)
     print(f"\n Saved ML model to: {MODEL_PATH}")
 
