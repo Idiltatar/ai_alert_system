@@ -4,6 +4,8 @@ import random
 
 DB_PATH = "alerts.db"
 
+
+# Create extra features for ML training
 def extract_features(ts_dt, value, message):
     hour = ts_dt.hour
     day_of_week = ts_dt.weekday() 
@@ -21,17 +23,17 @@ def extract_features(ts_dt, value, message):
 
     return hour, day_of_week, is_weekend, message_len, value_bucket
 
-
+# Connect to SQLite database
 def connect():
     return sqlite3.connect(DB_PATH)
 
-
+# Remove old alerts before generating new data
 def clear_alerts_table(conn):
     conn.execute("DELETE FROM alerts;")
     conn.execute("DELETE FROM sqlite_sequence WHERE name='alerts';")
     conn.commit()
 
-
+# Insert alert into database
 def insert_alert(conn, metric, value, message, label, ts_dt):
     ts = ts_dt.isoformat()
 
@@ -45,7 +47,7 @@ def insert_alert(conn, metric, value, message, label, ts_dt):
          hour, day_of_week, is_weekend, message_len, value_bucket)
     )
 
-
+# Generate low-risk sample alerts
 def make_noise_alert(ts_dt):
     choices = [
         ("CPU", random.uniform(5, 65), "CPU usage normal"),
@@ -56,7 +58,7 @@ def make_noise_alert(ts_dt):
     metric, value, msg = random.choice(choices)
     return metric, value, msg, "Noise"
 
-
+# Generate critical sample alerts
 def make_critical_alert(ts_dt):
     choices = [
         ("CPU", random.uniform(85, 100), "High CPU usage detected"),
@@ -78,7 +80,7 @@ def main():
     random.seed(42)
     conn = connect()
 
-    
+    # Reset alerts table
     clear_alerts_table(conn)
     print("Cleared existing alerts from alerts.db")
 
@@ -86,14 +88,15 @@ def main():
 
     alerts = []
 
-    
+     # Generate noise alerts
     for _ in range(75):
         ts_dt = now - datetime.timedelta(days=random.randint(0, 13))
         ts_dt = ts_dt.replace(hour=random.randint(0, 23),
                               minute=random.randint(0, 59),
                               second=0, microsecond=0)
         alerts.append(make_noise_alert(ts_dt) + (ts_dt,))
-
+    
+     # Generate critical alerts
     for _ in range(75):
         ts_dt = now - datetime.timedelta(days=random.randint(0, 13))
         ts_dt = ts_dt.replace(hour=random.randint(0, 23),
