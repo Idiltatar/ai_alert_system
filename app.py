@@ -10,6 +10,8 @@ DB_PATH = "alerts.db"
 MODEL_PATH = "model.pkl"
 
 model = None
+
+# Load trained ML model
 if os.path.exists(MODEL_PATH):
     try:
         model = joblib.load(MODEL_PATH)
@@ -25,13 +27,13 @@ else:
 def home():
     return redirect("/alerts")
 
-
+# Create database connection
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-
+# Add missing column if needed
 def ensure_column(conn, table_name, column_name, column_def):
     cols = [r["name"] for r in conn.execute(f"PRAGMA table_info({table_name});").fetchall()]
     if column_name not in cols:
@@ -39,7 +41,7 @@ def ensure_column(conn, table_name, column_name, column_def):
         conn.commit()
         print(f"Added missing column: {table_name}.{column_name}")
 
-
+# Create alerts table
 def init_db():
     conn = get_db()
     conn.execute("""
@@ -62,7 +64,7 @@ def init_db():
     ensure_column(conn, "alerts", "label_source", "TEXT")
     conn.close()
 
-
+# Extract features for ML prediction
 def extract_features(ts_dt, value, message):
     hour = ts_dt.hour
     day_of_week = ts_dt.weekday()
@@ -81,6 +83,7 @@ def extract_features(ts_dt, value, message):
     return hour, day_of_week, is_weekend, message_len, value_bucket
 
 
+# Validate incoming alert data
 def validate_payload(data):
     if not isinstance(data, dict):
         raise ValueError("JSON body must be an object.")
@@ -102,7 +105,7 @@ def validate_payload(data):
 
     return str(metric).strip(), value, str(message)
 
-
+# Fallback rules if ML is unavailable
 def baseline_classifier(metric, value, message):
     msg = (message or "").lower()
     m = (metric or "").upper()
@@ -120,7 +123,7 @@ def baseline_classifier(metric, value, message):
 
     return "Noise"
 
-
+# Predict alert label using ML model
 def predict_label(metric, value, message, hour, day_of_week, is_weekend, message_len, value_bucket):
     if model is None:
         raise RuntimeError("ML model is not loaded. Run train_model.py first.")
@@ -145,6 +148,7 @@ def predict_label(metric, value, message, hour, day_of_week, is_weekend, message
     return label, "ml"
 
 
+# Receive alerts from monitoring agent
 @app.route("/alerts", methods=["POST"])
 def receive_alert():
     data = request.get_json(silent=True) or {}
@@ -172,6 +176,8 @@ def receive_alert():
     conn = get_db()
     ensure_column(conn, "alerts", "label_source", "TEXT")
 
+
+ # Save alert into SQLite
     cur = conn.execute(
         """INSERT INTO alerts(metric, value, message, label, label_source, timestamp,
                               hour, day_of_week, is_weekend, message_len, value_bucket)
@@ -197,7 +203,7 @@ def receive_alert():
         }
     }), 201
 
-
+# Show alerts dashboard
 @app.route("/alerts", methods=["GET"])
 def list_alerts():
     conn = get_db()
@@ -229,6 +235,8 @@ def list_alerts():
         params
     ).fetchall()
 
+
+     # Dashboard summary counts
     total = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
     critical = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Critical'").fetchone()[0]
     noise = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Noise'").fetchone()[0]
@@ -249,7 +257,7 @@ def list_alerts():
         q=q
     )
 
-
+# Return dashboard chart data
 @app.route("/alerts/summary", methods=["GET"])
 def alerts_summary():
     conn = get_db()
@@ -258,6 +266,8 @@ def alerts_summary():
     critical = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Critical'").fetchone()[0]
     noise = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Noise'").fetchone()[0]
 
+
+    # Alerts grouped  day
     per_day_rows = conn.execute("""
         SELECT substr(timestamp, 1, 10) AS day, COUNT(*) AS count
         FROM alerts
@@ -266,6 +276,7 @@ def alerts_summary():
         LIMIT 14
     """).fetchall()
 
+   # Alerts grouped by metric
     per_metric_rows = conn.execute("""
         SELECT metric, COUNT(*) AS count
         FROM alerts
@@ -287,7 +298,7 @@ def alerts_summary():
         "per_metric": per_metric
     })
 
-
+# Manually update alert label
 @app.route("/alerts/<int:alert_id>/label", methods=["POST"])
 def update_label(alert_id):
     data = request.get_json(silent=True) or {}
