@@ -20,6 +20,8 @@ def test_ml_label_source_is_ml():
 
     assert data["label_source"] == "ml"
     assert data["label"] in ["Critical", "Noise"]
+    assert 0 <= data["confidence"] <= 100
+    assert "Prediction confidence" in data["explanation"]
 
 
 def test_manual_update_changes_to_manual():
@@ -45,3 +47,12 @@ def test_manual_update_changes_to_manual():
 
     assert updated["label_source"] == "manual"
     assert updated["label"] == "Noise"
+
+
+def test_needs_review_filter_loads_dashboard():
+    client = app.test_client()
+
+    response = client.get("/alerts?review=needs_review")
+
+    assert response.status_code == 200
+    assert b"Needs Review" in response.data

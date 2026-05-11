@@ -92,7 +92,7 @@
     }
 
     @media (min-width: 900px){
-      .cards{ grid-template-columns: 1fr 1fr 1fr; }
+      .cards{ grid-template-columns: 1fr 1fr 1fr 1fr; }
     }
 
     .card{
@@ -117,6 +117,7 @@
 
     .card.critical-card{ background:#fff0f0; }
     .card.noise-card{ background:#eef6ff; }
+    .card.review-card{ background:#fff7e6; }
 
     .charts-grid{
       display:grid;
@@ -236,6 +237,32 @@
       font-weight:700;
     }
 
+    .confidence{
+      font-weight:900;
+      color:#1f4f8f;
+    }
+
+    .confidence-low{
+      color:#b45309;
+    }
+
+    .review-tag{
+      display:inline-block;
+      margin-top:6px;
+      padding:3px 8px;
+      border-radius:999px;
+      background:#fef3c7;
+      color:#92400e;
+      font-size:11px;
+      font-weight:900;
+    }
+
+    .explanation{
+      max-width:280px;
+      color:#374151;
+      line-height:1.35;
+    }
+
     .empty-message{
       padding:14px;
       font-size:14px;
@@ -276,6 +303,11 @@
         <div class="small">Noise Alerts</div>
         <div class="big">{{ noise }}</div>
       </div>
+
+      <div class="card review-card">
+        <div class="small">Needs Review</div>
+        <div class="big">{{ needs_review }}</div>
+      </div>
     </div>
 
     <div class="charts-grid">
@@ -311,6 +343,12 @@
         {% endfor %}
       </select>
 
+      <label>Review:</label>
+      <select name="review">
+        <option value="all" {% if review_filter == 'all' %}selected{% endif %}>All</option>
+        <option value="needs_review" {% if review_filter == 'needs_review' %}selected{% endif %}>Needs Review</option>
+      </select>
+
       <input type="text" name="q" placeholder="Search in message..." value="{{ q }}">
       <button type="submit">Apply</button>
       <a href="/alerts">Reset</a>
@@ -323,6 +361,8 @@
         <th>Value</th>
         <th>Message</th>
         <th>Label</th>
+        <th>Confidence</th>
+        <th>AI explanation</th>
         <th>Hour</th>
         <th>Weekend?</th>
         <th>Value bucket</th>
@@ -349,6 +389,17 @@
             {% endif %}
           </td>
 
+          <td class="confidence {% if a['confidence'] is not none and a['confidence'] < low_confidence_threshold %}confidence-low{% endif %}">
+            {% if a['confidence'] is not none %}
+              {{ "%.1f"|format(a['confidence']) }}%
+              {% if a['confidence'] < low_confidence_threshold and a['label_source'] == 'ml' %}
+                <div class="review-tag">Needs Review</div>
+              {% endif %}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td class="explanation">{{ a['explanation'] or '-' }}</td>
           <td>{{ a['hour'] }}</td>
           <td>{{ 'Yes' if a['is_weekend']==1 else 'No' }}</td>
           <td>{{ a['value_bucket'] }}</td>
@@ -357,7 +408,7 @@
         {% endfor %}
       {% else %}
         <tr>
-          <td colspan="9" class="empty-message">
+          <td colspan="11" class="empty-message">
             No alerts yet. Send a POST request to <b>/alerts</b> to add alerts.
           </td>
         </tr>

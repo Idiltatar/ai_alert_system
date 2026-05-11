@@ -11,6 +11,7 @@ app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
 
 DB_PATH = BASE_DIR / "alerts.db"
 MODEL_PATH = BASE_DIR / "model.pkl"
+LOW_CONFIDENCE_THRESHOLD = 70.0
 
 model = None
 
@@ -55,6 +56,8 @@ def init_db():
         message TEXT,
         label TEXT,
         label_source TEXT,
+        confidence REAL,
+        explanation TEXT,
         timestamp TEXT,
         hour INTEGER,
         day_of_week INTEGER,
@@ -65,6 +68,8 @@ def init_db():
     """)
     conn.commit()
     ensure_column(conn, "alerts", "label_source", "TEXT")
+    ensure_column(conn, "alerts", "confidence", "REAL")
+    ensure_column(conn, "alerts", "explanation", "TEXT")
     conn.close()
 
 # Extract features for ML prediction
@@ -126,12 +131,50 @@ def baseline_classifier(metric, value, message):
 
     return "Noise"
 
+def build_explanation(metric, value, message, label, confidence, is_weekend, value_bucket):
+    reasons = [f"{metric.upper()} value is in the {value_bucket} range ({value:.1f})."]
+
+    msg = (message or "").lower()
+    important_keywords = ["failed", "error", "panic", "outage", "down", "unreachable", "disk full", "critical"]
+    matched_keywords = [word for word in important_keywords if word in msg]
+
+    if matched_keywords:
+        reasons.append("Message contains incident keywords: " + ", ".join(matched_keywords[:3]) + ".")
+
+    if is_weekend:
+        reasons.append("Alert happened during the weekend, which can change operational risk.")
+
+    if label == "Critical":
+        reasons.append("The model judged this alert as likely to need attention.")
+    else:
+        reasons.append("The model judged this alert as likely routine noise.")
+
+    if confidence is not None:
+        reasons.append(f"Prediction confidence is {confidence:.1f}%.")
+
+    return " ".join(reasons)
+
+
+def prediction_confidence(model_obj, features, pred):
+    if not hasattr(model_obj, "predict_proba"):
+        return None
+
+    probabilities = model_obj.predict_proba(features)[0]
+    classes = list(model_obj.classes_)
+    pred_index = classes.index(pred)
+    return round(float(probabilities[pred_index]) * 100, 1)
+
+
+def is_low_confidence(confidence):
+    return confidence is not None and confidence < LOW_CONFIDENCE_THRESHOLD
+
+
 # Predict alert label using ML model
 def predict_label(metric, value, message, hour, day_of_week, is_weekend, message_len, value_bucket):
     if model is None:
         raise RuntimeError("ML model is not loaded. Run python -m ai_alert.train_model first.")
 
-    X = [{
+    features = [{
         "metric": metric,
         "value": value,
         "message": message,
@@ -142,13 +185,16 @@ def predict_label(metric, value, message, hour, day_of_week, is_weekend, message
         "value_bucket": value_bucket
     }]
 
-    pred = model.predict(X)[0]
+    pred = model.predict(features)[0]
+    confidence = prediction_confidence(model, features, pred)
 
     if isinstance(pred, str):
-        return pred, "ml"
+        label = pred
+    else:
+        label = "Critical" if int(pred) == 1 else "Noise"
 
-    label = "Critical" if int(pred) == 1 else "Noise"
-    return label, "ml"
+    explanation = build_explanation(metric, value, message, label, confidence, is_weekend, value_bucket)
+    return label, "ml", confidence, explanation
 
 
 # Receive alerts from monitoring agent
@@ -167,7 +213,7 @@ def receive_alert():
     hour, day_of_week, is_weekend, message_len, value_bucket = extract_features(ts_dt, value, message)
 
     try:
-        label, label_source = predict_label(
+        label, label_source, confidence, explanation = predict_label(
             metric, value, message, hour, day_of_week, is_weekend, message_len, value_bucket
         )
     except Exception as e:
@@ -178,14 +224,16 @@ def receive_alert():
 
     conn = get_db()
     ensure_column(conn, "alerts", "label_source", "TEXT")
+    ensure_column(conn, "alerts", "confidence", "REAL")
+    ensure_column(conn, "alerts", "explanation", "TEXT")
 
 
     # Save alert into SQLite
     cur = conn.execute(
-        """INSERT INTO alerts(metric, value, message, label, label_source, timestamp,
+        """INSERT INTO alerts(metric, value, message, label, label_source, confidence, explanation, timestamp,
                               hour, day_of_week, is_weekend, message_len, value_bucket)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-        (metric, value, message, label, label_source, ts,
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (metric, value, message, label, label_source, confidence, explanation, ts,
          hour, day_of_week, is_weekend, message_len, value_bucket)
     )
     conn.commit()
@@ -197,6 +245,8 @@ def receive_alert():
         "id": alert_id,
         "label": label,
         "label_source": label_source,
+        "confidence": confidence,
+        "explanation": explanation,
         "features": {
             "hour": hour,
             "day_of_week": day_of_week,
@@ -211,9 +261,12 @@ def receive_alert():
 def list_alerts():
     conn = get_db()
     ensure_column(conn, "alerts", "label_source", "TEXT")
+    ensure_column(conn, "alerts", "confidence", "REAL")
+    ensure_column(conn, "alerts", "explanation", "TEXT")
 
     label_filter = request.args.get("label", "all")
     metric_filter = request.args.get("metric", "all")
+    review_filter = request.args.get("review", "all")
     q = (request.args.get("q", "") or "").strip()
 
     where = []
@@ -231,6 +284,12 @@ def list_alerts():
         where.append("message LIKE ?")
         params.append(f"%{q}%")
 
+    if review_filter == "needs_review":
+        where.append("label_source = ?")
+        where.append("confidence IS NOT NULL")
+        where.append("confidence < ?")
+        params.extend(["ml", LOW_CONFIDENCE_THRESHOLD])
+
     where_sql = ("WHERE " + " AND ".join(where)) if where else ""
 
     rows = conn.execute(
@@ -243,6 +302,10 @@ def list_alerts():
     total = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
     critical = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Critical'").fetchone()[0]
     noise = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Noise'").fetchone()[0]
+    needs_review = conn.execute(
+        "SELECT COUNT(*) FROM alerts WHERE label_source='ml' AND confidence IS NOT NULL AND confidence < ?",
+        (LOW_CONFIDENCE_THRESHOLD,)
+    ).fetchone()[0]
 
     metrics = [r[0] for r in conn.execute("SELECT DISTINCT metric FROM alerts ORDER BY metric").fetchall()]
 
@@ -254,9 +317,12 @@ def list_alerts():
         total=total,
         critical=critical,
         noise=noise,
+        needs_review=needs_review,
+        low_confidence_threshold=LOW_CONFIDENCE_THRESHOLD,
         metrics=metrics,
         label_filter=label_filter,
         metric_filter=metric_filter,
+        review_filter=review_filter,
         q=q
     )
 
@@ -264,10 +330,16 @@ def list_alerts():
 @app.route("/alerts/summary", methods=["GET"])
 def alerts_summary():
     conn = get_db()
+    ensure_column(conn, "alerts", "confidence", "REAL")
+    ensure_column(conn, "alerts", "explanation", "TEXT")
 
     total = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
     critical = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Critical'").fetchone()[0]
     noise = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Noise'").fetchone()[0]
+    needs_review = conn.execute(
+        "SELECT COUNT(*) FROM alerts WHERE label_source='ml' AND confidence IS NOT NULL AND confidence < ?",
+        (LOW_CONFIDENCE_THRESHOLD,)
+    ).fetchone()[0]
 
 
     # Alerts grouped by day
@@ -297,6 +369,7 @@ def alerts_summary():
         "total": total,
         "critical": critical,
         "noise": noise,
+        "needs_review": needs_review,
         "per_day": per_day,
         "per_metric": per_metric
     })
@@ -312,10 +385,12 @@ def update_label(alert_id):
 
     conn = get_db()
     ensure_column(conn, "alerts", "label_source", "TEXT")
+    ensure_column(conn, "alerts", "confidence", "REAL")
+    ensure_column(conn, "alerts", "explanation", "TEXT")
 
     cur = conn.execute(
-        "UPDATE alerts SET label=?, label_source=? WHERE id=?",
-        (new_label, "manual", alert_id)
+        "UPDATE alerts SET label=?, label_source=?, confidence=?, explanation=? WHERE id=?",
+        (new_label, "manual", None, "Label was manually changed by the user.", alert_id)
     )
     conn.commit()
     conn.close()
