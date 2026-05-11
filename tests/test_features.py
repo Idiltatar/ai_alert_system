@@ -1,4 +1,4 @@
-from generate_alerts import extract_features
+from ai_alert.generate_alerts import extract_features
 import datetime
 
 
@@ -21,7 +21,7 @@ def test_value_bucket_low():
 
 
 def test_weekend_flag():
-    ts = datetime.datetime(2024, 6, 22)  # Saturday
+    ts = datetime.datetime(2024, 6, 22) 
     _, _, is_weekend, _, _ = extract_features(ts, 50, "msg")
     assert is_weekend == 1
 

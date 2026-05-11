@@ -1,4 +1,4 @@
-from app import app, init_db
+from ai_alert.app import app, init_db
 
 
 def setup_module(module):

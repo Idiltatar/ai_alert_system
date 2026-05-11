@@ -2,117 +2,319 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>AI Alert Dashboard</title>
+  <title>AI Alert Intelligence Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
-    body {
+    body{
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f5f7fb;
+      margin:0;
+      padding:0;
+      background:#f5f7fb;
+      color:#0b1220;
     }
 
-    .page {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 24px 16px 40px;
+    .page{
+      max-width:1200px;
+      margin:0 auto;
+      padding:22px 16px 40px;
     }
 
-    h1 {
-      margin: 0 0 4px;
-      font-size: 28px;
-    }
-
-    .subtitle {
-      color: #555;
-      margin-bottom: 20px;
-    }
-
-    .info-bar {
-      background: #ffffff;
-      border-radius: 8px;
-      padding: 10px 14px;
-      margin-bottom: 18px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-      font-size: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .info-bar span.label {
-      font-weight: 600;
-    }
-
-    .badge {
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      background: #e5f3ff;
-      color: #165bb7;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      background: #ffffff;
-      border-radius: 8px;
+    .hero{
+      background: linear-gradient(135deg, #0b1220, #122b4a);
+      color:#fff;
+      padding:22px 18px;
+      border-radius:14px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.10);
+      margin-bottom:16px;
+      position: relative;
       overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
 
-    th, td {
-      border-bottom: 1px solid #eee;
-      padding: 8px 10px;
-      font-size: 14px;
-      text-align: left;
+    .hero h1{
+      margin:0 0 6px;
+      font-size:30px;
+      letter-spacing:0.2px;
     }
 
-    th {
-      background: #f2f4f8;
-      font-weight: 600;
+    .hero p{
+      margin:0;
+      opacity:0.88;
+      max-width:880px;
+      line-height:1.45;
+      font-size:14px;
     }
 
-    tr:last-child td {
-      border-bottom: none;
+    .ai-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      margin-top:12px;
+      background: rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.20);
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      width: fit-content;
     }
 
-    .critical {
-      background-color: #ffe5e5;
+    .info-bar{
+      background:#fff;
+      border-radius:10px;
+      padding:10px 14px;
+      margin:12px 0 16px;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06);
+      font-size:14px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      border:1px solid #eef2f7;
     }
 
-    .noise {
-      background-color: #f6f6f6;
+    .info-bar span.label{ font-weight:700; }
+
+    .badge{
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      background:#e5f3ff;
+      color:#165bb7;
     }
 
-    .example {
-      background-color: #fffbe6;
-      font-style: italic;
+    .cards{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+      margin:10px 0 12px;
     }
 
-    .empty-message {
-      padding: 14px;
-      font-size: 14px;
-      color: #666;
+    @media (min-width: 900px){
+      .cards{ grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    .card{
+      background:#fff;
+      padding:14px;
+      border-radius:12px;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06);
+      border:1px solid #eef2f7;
+    }
+
+    .card .small{
+      font-size:12px;
+      color:#51607a;
+      font-weight:700;
+    }
+
+    .card .big{
+      font-size:28px;
+      font-weight:900;
+      margin-top:6px;
+    }
+
+    .card.critical-card{ background:#fff0f0; }
+    .card.noise-card{ background:#eef6ff; }
+
+    .charts-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+      margin:12px 0 16px;
+    }
+
+    @media (min-width: 900px){
+      .charts-grid{ grid-template-columns:1fr 1fr 1fr; }
+    }
+
+    .card-title{
+      font-size:13px;
+      font-weight:900;
+      color:#24324a;
+      margin:0 0 8px;
+    }
+
+    .filters{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin:10px 0 14px;
+      flex-wrap: wrap;
+    }
+
+    .filters label{
+      font-size:14px;
+      color:#333;
+      font-weight:700;
+    }
+
+    .filters select,
+    .filters input{
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid #dde3ee;
+      font-size:14px;
+      background:white;
+      outline:none;
+    }
+
+    .filters input{
+      flex:1;
+      min-width: 220px;
+    }
+
+    .filters button{
+      padding:9px 14px;
+      border-radius:10px;
+      border:1px solid #dde3ee;
+      cursor:pointer;
+      background:#fff;
+      font-weight:800;
+    }
+
+    .filters a{
+      font-size:14px;
+      color:#165bb7;
+      text-decoration:none;
+      font-weight:800;
+      padding:6px 8px;
+    }
+
+    table{
+      border-collapse:collapse;
+      width:100%;
+      background:#fff;
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06);
+      border:1px solid #eef2f7;
+    }
+
+    th, td{
+      border-bottom:1px solid #eef2f7;
+      padding:10px 10px;
+      font-size:14px;
+      text-align:left;
+      vertical-align:top;
+    }
+
+    th{
+      background:#f2f4f8;
+      font-weight:900;
+      color:#21304a;
+    }
+
+    tr:last-child td{ border-bottom:none; }
+
+    .critical{ background-color:#fff6f6; }
+    .noise{ background-color:#ffffff; }
+
+    .pill{
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:12px;
+    }
+
+    .pill-critical{
+      background:#ffdddd;
+      color:#a10000;
+    }
+
+    .pill-noise{
+      background:#e8f2ff;
+      color:#004a99;
+    }
+
+    .source{
+      font-size:12px;
+      color:#667792;
+      margin-top:4px;
+      font-weight:700;
+    }
+
+    .empty-message{
+      padding:14px;
+      font-size:14px;
+      color:#666;
     }
   </style>
 </head>
+
 <body>
   <div class="page">
-    <h1>AI-Based Alert Filtering Dashboard</h1>
-    <div class="subtitle">
-      Prototype interface for my final year project. This dashboard will show system alerts,
-      highlight critical ones, and hide routine noise.
+
+    <div class="hero">
+      <h1>AI Alert Intelligence Dashboard</h1>
+      <p>
+        Real-time alert monitoring with ML-based classification. The system detects high-impact incidents,
+        reduces alert noise, and helps engineers focus on the alerts that matter most.
+      </p>
+      <div class="ai-badge">ML-Powered • Noise Reduction • Real-Time</div>
     </div>
 
     <div class="info-bar">
-      <div>
-        <span class="label">Status:</span> Prototype UI (backend not fully finished yet)
+      <div><span class="label">System Status:</span> Running</div>
+      <div class="badge">Live Dashboard</div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="small">Total Alerts</div>
+        <div class="big">{{ total }}</div>
       </div>
-      <div class="badge">
-        Sample view – layout only
+
+      <div class="card critical-card">
+        <div class="small">Critical Alerts</div>
+        <div class="big">{{ critical }}</div>
+      </div>
+
+      <div class="card noise-card">
+        <div class="small">Noise Alerts</div>
+        <div class="big">{{ noise }}</div>
       </div>
     </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-title">Severity Split</div>
+        <canvas id="severityChart" height="140"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Alerts Over Time (Last 14 Days)</div>
+        <canvas id="trendChart" height="140"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Top Metrics</div>
+        <canvas id="metricChart" height="140"></canvas>
+      </div>
+    </div>
+
+    <form class="filters" method="get" action="/alerts">
+      <label>Label:</label>
+      <select name="label">
+        <option value="all" {% if label_filter == 'all' %}selected{% endif %}>All</option>
+        <option value="Critical" {% if label_filter == 'Critical' %}selected{% endif %}>Critical</option>
+        <option value="Noise" {% if label_filter == 'Noise' %}selected{% endif %}>Noise</option>
+      </select>
+
+      <label>Metric:</label>
+      <select name="metric">
+        <option value="all" {% if metric_filter == 'all' %}selected{% endif %}>All</option>
+        {% for m in metrics %}
+          <option value="{{ m }}" {% if metric_filter == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+
+      <input type="text" name="q" placeholder="Search in message..." value="{{ q }}">
+      <button type="submit">Apply</button>
+      <a href="/alerts">Reset</a>
+    </form>
 
     <table>
       <tr>
@@ -121,40 +323,105 @@
         <th>Value</th>
         <th>Message</th>
         <th>Label</th>
+        <th>Hour</th>
+        <th>Weekend?</th>
+        <th>Value bucket</th>
         <th>Time (UTC)</th>
       </tr>
 
       {% if alerts and alerts|length > 0 %}
-        {# gerçek veriler varsa onları göster #}
         {% for a in alerts %}
         <tr class="{{ 'critical' if a['label']=='Critical' else 'noise' }}">
           <td>{{ a['id'] }}</td>
           <td>{{ a['metric'] }}</td>
           <td>{{ a['value'] }}</td>
           <td>{{ a['message'] }}</td>
-          <td>{{ a['label'] }}</td>
+
+          <td>
+            {% if a['label'] == 'Critical' %}
+              <span class="pill pill-critical">Critical</span>
+            {% else %}
+              <span class="pill pill-noise">Noise</span>
+            {% endif %}
+
+            {% if a['label_source'] %}
+              <div class="source">source: {{ a['label_source'] }}</div>
+            {% endif %}
+          </td>
+
+          <td>{{ a['hour'] }}</td>
+          <td>{{ 'Yes' if a['is_weekend']==1 else 'No' }}</td>
+          <td>{{ a['value_bucket'] }}</td>
           <td>{{ a['timestamp'] }}</td>
         </tr>
         {% endfor %}
       {% else %}
-        {# henüz gerçek alert yoksa örnek (fake) bir satır göster #}
-        <tr class="example">
-          <td>1</td>
-          <td>CPU</td>
-          <td>92%</td>
-          <td>High CPU usage detected on node gpu-worker-01.</td>
-          <td>Critical</td>
-          <td>2025-12-01T09:30:00Z</td>
+        <tr>
+          <td colspan="9" class="empty-message">
+            No alerts yet. Send a POST request to <b>/alerts</b> to add alerts.
+          </td>
         </tr>
       {% endif %}
     </table>
 
-    {% if not alerts or alerts|length == 0 %}
-    <div class="empty-message">
-      This is a sample alert row to show how the table will look when real data arrives.
-      Later, this will be replaced by live alerts from the backend.
-    </div>
-    {% endif %}
   </div>
+
+  <script>
+    async function loadCharts() {
+      const res = await fetch("/alerts/summary");
+      const data = await res.json();
+
+      new Chart(document.getElementById("severityChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Critical", "Noise"],
+          datasets: [{ data: [data.critical, data.noise] }]
+        },
+        options: {
+          plugins: { legend: { position: "bottom" } }
+        }
+      });
+
+      const days = data.per_day.map(x => x.day);
+      const counts = data.per_day.map(x => x.count);
+
+      new Chart(document.getElementById("trendChart"), {
+        type: "line",
+        data: {
+          labels: days,
+          datasets: [{
+            label: "Alerts",
+            data: counts,
+            tension: 0.3
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      const metrics = data.per_metric.map(x => x.metric);
+      const metricCounts = data.per_metric.map(x => x.count);
+
+      new Chart(document.getElementById("metricChart"), {
+        type: "bar",
+        data: {
+          labels: metrics,
+          datasets: [{
+            label: "Count",
+            data: metricCounts
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    loadCharts();
+  </script>
+
 </body>
 </html>

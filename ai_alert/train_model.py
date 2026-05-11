@@ -13,9 +13,11 @@ from sklearn.metrics import (
     f1_score
 )
 import joblib
+from pathlib import Path
 
-DB_PATH = "alerts.db"
-MODEL_PATH = "model.pkl"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = BASE_DIR / "alerts.db"
+MODEL_PATH = BASE_DIR / "model.pkl"
 
 # Load labelled alerts from SQLite
 def load_data():
@@ -105,7 +107,7 @@ def main():
     print("\nLabel distribution:")
     print(label_counts)
 
- # Select features used for training
+    # Select features used for training
     X = df[[
         "metric",
         "value",
@@ -119,7 +121,7 @@ def main():
     # Convert labels into numbers
     y = (df["label"] == "Critical").astype(int)
 
-     # Split data into training and testing sets
+    # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -148,7 +150,7 @@ def main():
     
     compare_results(y_test, y_pred_ml, y_pred_base)
 
- # Save trained model for Flask app
+    # Save trained model for Flask app
     joblib.dump(model, MODEL_PATH)
     print(f"\n Saved ML model to: {MODEL_PATH}")
 

@@ -3,11 +3,14 @@ import sqlite3
 import datetime
 import joblib
 import os
+from pathlib import Path
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-DB_PATH = "alerts.db"
-MODEL_PATH = "model.pkl"
+app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
+
+DB_PATH = BASE_DIR / "alerts.db"
+MODEL_PATH = BASE_DIR / "model.pkl"
 
 model = None
 
@@ -20,7 +23,7 @@ if os.path.exists(MODEL_PATH):
         model = None
         print("Failed to load model.pkl:", e)
 else:
-    print(" model.pkl not found yet. Run train_model.py first.")
+    print(" model.pkl not found yet. Run python -m ai_alert.train_model first.")
 
 
 @app.route("/")
@@ -126,7 +129,7 @@ def baseline_classifier(metric, value, message):
 # Predict alert label using ML model
 def predict_label(metric, value, message, hour, day_of_week, is_weekend, message_len, value_bucket):
     if model is None:
-        raise RuntimeError("ML model is not loaded. Run train_model.py first.")
+        raise RuntimeError("ML model is not loaded. Run python -m ai_alert.train_model first.")
 
     X = [{
         "metric": metric,
@@ -177,7 +180,7 @@ def receive_alert():
     ensure_column(conn, "alerts", "label_source", "TEXT")
 
 
- # Save alert into SQLite
+    # Save alert into SQLite
     cur = conn.execute(
         """INSERT INTO alerts(metric, value, message, label, label_source, timestamp,
                               hour, day_of_week, is_weekend, message_len, value_bucket)
@@ -236,7 +239,7 @@ def list_alerts():
     ).fetchall()
 
 
-     # Dashboard summary counts
+    # Dashboard summary counts
     total = conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
     critical = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Critical'").fetchone()[0]
     noise = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Noise'").fetchone()[0]
@@ -267,7 +270,7 @@ def alerts_summary():
     noise = conn.execute("SELECT COUNT(*) FROM alerts WHERE label='Noise'").fetchone()[0]
 
 
-    # Alerts grouped  day
+    # Alerts grouped by day
     per_day_rows = conn.execute("""
         SELECT substr(timestamp, 1, 10) AS day, COUNT(*) AS count
         FROM alerts
@@ -276,7 +279,7 @@ def alerts_summary():
         LIMIT 14
     """).fetchall()
 
-   # Alerts grouped by metric
+    # Alerts grouped by metric
     per_metric_rows = conn.execute("""
         SELECT metric, COUNT(*) AS count
         FROM alerts

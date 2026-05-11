@@ -20,5 +20,5 @@ The system receives alerts, extracts features, and classifies them as Critical o
 ### 1. Generate dataset
 
 ```bash
-python generate_alerts.py
+python -m ai_alert.generate_alerts
 ```

@@ -1,8 +1,10 @@
 import sqlite3
 import datetime
 import random
+from pathlib import Path
 
-DB_PATH = "alerts.db"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DB_PATH = BASE_DIR / "alerts.db"
 
 
 # Create extra features for ML training
@@ -88,7 +90,7 @@ def main():
 
     alerts = []
 
-     # Generate noise alerts
+    # Generate noise alerts
     for _ in range(75):
         ts_dt = now - datetime.timedelta(days=random.randint(0, 13))
         ts_dt = ts_dt.replace(hour=random.randint(0, 23),
@@ -96,14 +98,15 @@ def main():
                               second=0, microsecond=0)
         alerts.append(make_noise_alert(ts_dt) + (ts_dt,))
     
-     # Generate critical alerts
+    # Generate critical alerts
     for _ in range(75):
         ts_dt = now - datetime.timedelta(days=random.randint(0, 13))
         ts_dt = ts_dt.replace(hour=random.randint(0, 23),
                               minute=random.randint(0, 59),
                               second=0, microsecond=0)
         alerts.append(make_critical_alert(ts_dt) + (ts_dt,))
-
+        
+    # Shuffle dataset before inserting
     random.shuffle(alerts)
 
     for metric, value, message, label, ts_dt in alerts:
