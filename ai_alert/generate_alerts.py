@@ -29,6 +29,28 @@ def extract_features(ts_dt, value, message):
 def connect():
     return sqlite3.connect(DB_PATH)
 
+# Create alerts table if this is a fresh deployment
+def init_db(conn):
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS alerts(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        metric TEXT NOT NULL,
+        value REAL NOT NULL,
+        message TEXT,
+        label TEXT,
+        label_source TEXT,
+        confidence REAL,
+        explanation TEXT,
+        timestamp TEXT,
+        hour INTEGER,
+        day_of_week INTEGER,
+        is_weekend INTEGER,
+        message_len INTEGER,
+        value_bucket TEXT
+    )
+    """)
+    conn.commit()
+
 # Remove old alerts before generating new data
 def clear_alerts_table(conn):
     conn.execute("DELETE FROM alerts;")
@@ -81,6 +103,8 @@ def make_critical_alert(ts_dt):
 def main():
     random.seed(42)
     conn = connect()
+
+    init_db(conn)
 
     # Reset alerts table
     clear_alerts_table(conn)
