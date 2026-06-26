@@ -1,10 +1,22 @@
-# AI Alert Filtering System
+# AlertIQ
 
 ## Overview
 
-This project is an AI-based alert filtering system built with Flask, SQLite and machine learning.
+AlertIQ is an AI-powered alert classification platform built with Flask, SQLite and machine learning.
 
-The system receives monitoring alerts, extracts useful features, and classifies each alert as either `Critical` or `Noise`. It also shows a confidence score, an AI explanation, and a `Needs Review` status for low-confidence predictions.
+The system receives monitoring alerts, extracts engineered features, and classifies each alert as either `Critical` or `Noise`. It also shows a confidence score, an AI explanation, and a `Needs Review` status for low-confidence predictions.
+
+This project is designed to reduce manual alert review and help teams prioritise incidents more effectively.
+
+## Tech Stack
+
+- Python
+- Flask
+- SQLite
+- scikit-learn
+- pandas
+- psutil
+- pytest
 
 ## Features
 
@@ -18,6 +30,10 @@ The system receives monitoring alerts, extracts useful features, and classifies 
 - Rule-based fallback logic
 - SQLite database storage
 - Flask dashboard with charts, filters and search
+
+## Machine Learning
+
+AlertIQ uses a Logistic Regression model trained on engineered alert features such as metric type, alert value, time context, message length and value bucket. In the project dataset, the model achieved strong classification performance during local evaluation.
 
 ## Project Structure
 
